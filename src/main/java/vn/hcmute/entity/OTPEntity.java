@@ -17,7 +17,7 @@ public class OTPEntity extends BaseEntity{
     @Column(name = "expiry_time", nullable = false)
     private LocalDateTime expiryTime;
 
-    @ManyToOne
+    @OneToOne(optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity userEntity;
 }

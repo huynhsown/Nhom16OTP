@@ -1,9 +1,7 @@
 package vn.hcmute.entity;
 
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
@@ -11,6 +9,8 @@ import java.util.List;
 @Table(name = "user")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class UserEntity extends BaseEntity{
     @Column(name = "username", unique = true)
@@ -39,6 +39,6 @@ public class UserEntity extends BaseEntity{
     @JoinColumn(name = "role_id", nullable = false)
     private RoleEntity roleEntity;
 
-    @OneToMany(mappedBy = "userEntity", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OTPEntity> otpEntities;
+    @OneToOne(mappedBy = "userEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private OTPEntity otpEntity;
 }

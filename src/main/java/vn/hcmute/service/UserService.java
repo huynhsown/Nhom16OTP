@@ -10,4 +10,6 @@ public interface UserService {
 
     UserEntity createUser(UserDTO userDTO) throws PermissionDenyException;
 
+    boolean verifyOTP(UserDTO userDTO, String otp);
+
 }
