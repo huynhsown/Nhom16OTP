@@ -10,6 +10,8 @@ import vn.hcmute.entity.UserEntity;
 import vn.hcmute.enums.RoleType;
 import vn.hcmute.exception.DataNotFoundException;
 import vn.hcmute.exception.PermissionDenyException;
+import vn.hcmute.model.dto.OTPDTO;
+import vn.hcmute.model.dto.OTPRequestDTO;
 import vn.hcmute.model.dto.UserDTO;
 import vn.hcmute.repository.RoleRepository;
 import vn.hcmute.repository.UserRepository;
@@ -78,6 +80,29 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean verifyOTP(UserDTO userDTO, String otp) {
+        return false;
+    }
+
+    @Override
+    public OTPDTO getOTP(String email) {
+        UserEntity userEntity = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+        return otpService.getOTP(userEntity);
+    }
+
+    @Override
+    public boolean verifyOTP(OTPRequestDTO otpRequestDTO) {
+        UserEntity userEntity = userRepository.findByEmail(otpRequestDTO.getEmail())
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+        OTPDTO otp = otpService.getOTP(userEntity);
+        if(otp == null){
+            throw new DataNotFoundException("Your OTP code has expired or does not exist, click resend to receive a new code");
+        }
+        if(otp.getOtpCode().equals(otpRequestDTO.getOTP())){
+            userEntity.setVerified(true);
+            userRepository.save(userEntity);
+            return true;
+        }
         return false;
     }
 

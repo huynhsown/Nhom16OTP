@@ -9,5 +9,6 @@ import java.util.List;
 
 public interface OTPRepository extends JpaRepository<OTPEntity, Long> {
     List<OTPEntity> findByExpiryTimeBefore(LocalDateTime now);
-    OTPEntity findByExpiryTimeBeforeAndUserEntity(LocalDateTime expiryTime, UserEntity userEntity);
+    OTPEntity findByExpiryTimeAfterAndUserEntity(LocalDateTime expiryTime, UserEntity userEntity);
+    OTPEntity findByUserEntity(UserEntity userEntity);
 }
