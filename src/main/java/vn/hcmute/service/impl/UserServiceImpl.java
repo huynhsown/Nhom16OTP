@@ -19,6 +19,8 @@ import vn.hcmute.service.EmailService;
 import vn.hcmute.service.OTPService;
 import vn.hcmute.service.UserService;
 
+import java.util.ArrayList;
+
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -39,26 +41,40 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserEntity createUser(UserDTO userDTO) throws PermissionDenyException {
+        validateUserData(userDTO);
+        RoleEntity roleEntity = getRoleEntity(userDTO.getRoleId());
+        UserEntity userEntity = buildUserEntity(userDTO, roleEntity);
+        encodePassword(userEntity, userDTO.getPassword());
+        userRepository.save(userEntity);
+        processOtpAndSendEmail(userEntity, userDTO.getEmail());
+        return userRepository.save(userEntity);
+    }
+
+    private void validateUserData(UserDTO userDTO) {
         if (userRepository.existsByUserName(userDTO.getUserName())) {
             throw new DataIntegrityViolationException("Username already exists");
         }
-
         if (userRepository.existsByEmail(userDTO.getEmail())) {
             throw new DataIntegrityViolationException("Email already exists");
         }
-
         if (userRepository.existsByTelephone(userDTO.getTelephone())) {
             throw new DataIntegrityViolationException("Phone number already exists");
         }
+    }
 
-        RoleEntity roleEntity = roleRepository.findByRoleCode(userDTO.getRoleId())
-                .orElseThrow(() -> new DataNotFoundException("Role not found"));
+    private RoleEntity getRoleEntity(Long roleCode) throws PermissionDenyException {
+        RoleEntity roleEntity = roleRepository.findByRoleCode(roleCode)
+                .orElseThrow(() -> new DataNotFoundException("Không tìm thấy quyền"));
 
         if (roleEntity.getRoleType().equals(RoleType.ADMIN)) {
-            throw new PermissionDenyException("Can't regis an admin account");
+            throw new PermissionDenyException("Không thể đăng ký quyền admin");
         }
 
-        UserEntity userEntity = UserEntity.builder()
+        return roleEntity;
+    }
+
+    private UserEntity buildUserEntity(UserDTO userDTO, RoleEntity roleEntity) {
+        return UserEntity.builder()
                 .userName(userDTO.getUserName())
                 .firstName(userDTO.getFirstName())
                 .lastName(userDTO.getLastName())
@@ -67,16 +83,21 @@ public class UserServiceImpl implements UserService {
                 .email(userDTO.getEmail())
                 .roleEntity(roleEntity)
                 .isVerified(false)
+                .otpEntity(new ArrayList<>())
                 .build();
-
-        String passwordEncoded = passwordEncoder.encode(userDTO.getPassword());
-        userEntity.setPassWord(passwordEncoded);
-
-        OTPEntity otpEntity = otpService.generateOTP(userEntity);
-        emailService.sendOTPEmail(userDTO.getEmail(), otpEntity.getOtpCode());
-        userEntity.setOtpEntity(otpEntity);
-        return userRepository.save(userEntity);
     }
+
+    private void encodePassword(UserEntity userEntity, String rawPassword) {
+        String passwordEncoded = passwordEncoder.encode(rawPassword);
+        userEntity.setPassWord(passwordEncoded);
+    }
+
+    private void processOtpAndSendEmail(UserEntity userEntity, String email) {
+        OTPEntity otpEntity = otpService.generateOTP(userEntity);
+        emailService.sendOTPEmail(email, otpEntity.getOtpCode());
+        userEntity.getOtpEntity().add(otpEntity);
+    }
+
 
     @Override
     public boolean verifyOTP(UserDTO userDTO, String otp) {
@@ -94,17 +115,6 @@ public class UserServiceImpl implements UserService {
     public boolean verifyOTP(OTPRequestDTO otpRequestDTO) {
         UserEntity userEntity = userRepository.findByEmail(otpRequestDTO.getEmail())
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
-        OTPDTO otp = otpService.getOTP(userEntity);
-        if(otp == null){
-            throw new DataNotFoundException("Your OTP code has expired or does not exist, click resend to receive a new code");
-        }
-        if(otp.getOtpCode().equals(otpRequestDTO.getOTP())){
-            userEntity.setVerified(true);
-            userRepository.save(userEntity);
-            return true;
-        }
-        return false;
+        return otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity);
     }
-
-
 }

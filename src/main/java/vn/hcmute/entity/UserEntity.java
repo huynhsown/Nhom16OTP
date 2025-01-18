@@ -3,6 +3,7 @@ package vn.hcmute.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -39,6 +40,6 @@ public class UserEntity extends BaseEntity{
     @JoinColumn(name = "role_id", nullable = false)
     private RoleEntity roleEntity;
 
-    @OneToOne(mappedBy = "userEntity", cascade = CascadeType.ALL, orphanRemoval = true)
-    private OTPEntity otpEntity;
+    @OneToMany(mappedBy = "userEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OTPEntity> otpEntity = new ArrayList<>();
 }

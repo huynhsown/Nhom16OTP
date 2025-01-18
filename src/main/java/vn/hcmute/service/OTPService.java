@@ -11,4 +11,5 @@ public interface OTPService {
     OTPEntity generateOTP(UserEntity userEntity);
     void deleteExpiredOTPs();
     OTPDTO getOTP(UserEntity userEntity);
+    boolean verifyOTP(String otpCode, UserEntity userEntity);
 }
