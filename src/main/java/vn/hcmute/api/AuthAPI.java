@@ -52,7 +52,7 @@ public class AuthAPI {
     }
 
     @PostMapping("/otp/verify")
-    public ResponseEntity<?> verifyOTP(@RequestBody OTPRequestDTO otpRequestDTO, BindingResult result){
+    public ResponseEntity<?> verifyOTP(@Valid @RequestBody OTPRequestDTO otpRequestDTO, BindingResult result){
         try{
             if(result.hasErrors()){
                 List<String> errorMessages = result.getFieldErrors()
@@ -72,9 +72,20 @@ public class AuthAPI {
     }
 
     @PostMapping("/otp/resend")
-    public ResponseEntity<?> resendOTP(@Valid @RequestBody ResendOTPRequest resendOTPRequest){
-        userService.isSend(resendOTPRequest.getEmail(), resendOTPRequest.getOtpType());
-        return ResponseEntity.ok("Gửi lại OTP thành công");
+    public ResponseEntity<?> resendOTP(@Valid @RequestBody ResendOTPRequest resendOTPRequest, BindingResult result){
+        try{
+            if(result.hasErrors()){
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+            userService.isSend(resendOTPRequest.getEmail(), resendOTPRequest.getOtpType());
+            return ResponseEntity.ok("Gửi lại OTP thành công");
+        }catch (Exception ex){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
     }
 
     @PostMapping("/reset-password")
