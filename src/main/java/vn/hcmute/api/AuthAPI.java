@@ -74,7 +74,7 @@ public class AuthAPI {
     public ResponseEntity<?> resendOTP(@RequestParam @Email @NotNull String email,
                                        @RequestParam @NotNull OTPType otpType){
         userService.isSend(email, otpType);
-        return ResponseEntity.ok("");
+        return ResponseEntity.ok("Gửi lại OTP thành công");
     }
 
     @PostMapping("/reset-password")
