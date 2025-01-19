@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import vn.hcmute.entity.UserEntity;
 import vn.hcmute.enums.OTPType;
 import vn.hcmute.model.dto.OTPRequestDTO;
+import vn.hcmute.model.dto.ResendOTPRequest;
 import vn.hcmute.model.dto.UserDTO;
 import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.service.OTPService;
@@ -71,9 +72,8 @@ public class AuthAPI {
     }
 
     @PostMapping("/otp/resend")
-    public ResponseEntity<?> resendOTP(@RequestParam @Email @NotNull String email,
-                                       @RequestParam @NotNull OTPType otpType){
-        userService.isSend(email, otpType);
+    public ResponseEntity<?> resendOTP(@Valid @RequestBody ResendOTPRequest resendOTPRequest){
+        userService.isSend(resendOTPRequest.getEmail(), resendOTPRequest.getOtpType());
         return ResponseEntity.ok("Gửi lại OTP thành công");
     }
 
