@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.hcmute.entity.OTPEntity;
 import vn.hcmute.entity.RoleEntity;
 import vn.hcmute.entity.UserEntity;
+import vn.hcmute.enums.OTPType;
 import vn.hcmute.enums.RoleType;
 import vn.hcmute.exception.DataNotFoundException;
 import vn.hcmute.exception.PermissionDenyException;
@@ -48,7 +49,7 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = buildUserEntity(userDTO, roleEntity);
         encodePassword(userEntity, userDTO.getPassword());
         userRepository.save(userEntity);
-        processOtpAndSendEmail(userEntity, userDTO.getEmail());
+        processOtpAndSendEmail(userEntity, userDTO.getEmail(), OTPType.EMAIL_VERIFICATION);
         return userRepository.save(userEntity);
     }
 
@@ -94,16 +95,10 @@ public class UserServiceImpl implements UserService {
         userEntity.setPassWord(passwordEncoded);
     }
 
-    private void processOtpAndSendEmail(UserEntity userEntity, String email) {
-        OTPEntity otpEntity = otpService.generateOTP(userEntity);
+    private void processOtpAndSendEmail(UserEntity userEntity, String email, OTPType otpType) {
+        OTPEntity otpEntity = otpService.generateOTP(userEntity, otpType);
         emailService.sendOTPEmail(email, otpEntity.getOtpCode());
         userEntity.getOtpEntity().add(otpEntity);
-    }
-
-
-    @Override
-    public boolean verifyOTP(UserDTO userDTO, String otp) {
-        return false;
     }
 
     @Override
@@ -114,10 +109,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean verifyOTP(OTPRequestDTO otpRequestDTO) {
+    public boolean verifyUser(OTPRequestDTO otpRequestDTO) {
         UserEntity userEntity = userRepository.findByEmail(otpRequestDTO.getEmail())
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
-        return otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity);
+        if(otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity, OTPType.EMAIL_VERIFICATION)){
+            userEntity.setVerified(true);
+            userRepository.save(userEntity);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -126,7 +126,7 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = userRepository.findByEmail(resetPasswordDTO.getEmail())
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
 
-        if (!otpService.verifyOTP(resetPasswordDTO.getOtp(), userEntity)) {
+        if (!otpService.verifyOTP(resetPasswordDTO.getOtp(), userEntity, OTPType.PASSWORD_RESET)) {
             return false;
         }
 
@@ -134,5 +134,12 @@ public class UserServiceImpl implements UserService {
         userEntity.setPassWord(encodedPassword);
         userRepository.save(userEntity);
         return true;
+    }
+
+    @Override
+    public void isSend(String email, OTPType otpType) {
+        UserEntity userEntity = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+        processOtpAndSendEmail(userEntity, email, otpType);
     }
 }
