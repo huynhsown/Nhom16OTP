@@ -1,7 +1,6 @@
 package vn.hcmute.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +17,6 @@ import vn.hcmute.service.OTPService;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class OTPServiceImpl implements OTPService {
@@ -33,12 +31,12 @@ public class OTPServiceImpl implements OTPService {
 
     @Override
     @Transactional
-    public OTPEntity generateOTP(UserEntity userEntity) {
+    public OTPEntity generateOTP(UserEntity userEntity, OTPType otpType) {
         validateUserEntity(userEntity);
         deactivateExistingOTPs(userEntity);
 
         String otpCode = generateSecureOTP();
-        OTPEntity otpEntity = createOTPEntity(userEntity, otpCode);
+        OTPEntity otpEntity = createOTPEntity(userEntity, otpCode, otpType);
 
         return otpRepository.save(otpEntity);
     }
@@ -61,13 +59,17 @@ public class OTPServiceImpl implements OTPService {
 
     @Override
     @Transactional
-    public boolean verifyOTP(String otpCode, UserEntity userEntity) {
+    public boolean verifyOTP(String otpCode, UserEntity userEntity, OTPType otpType) {
         validateUserEntity(userEntity);
 
         OTPEntity otpEntity = otpRepository.findFirstByUserEntityAndStatusOrderByCreatedDateDesc(
                 userEntity, OTPStatus.ACTIVE);
 
         if (otpEntity == null) {
+            return false;
+        }
+
+        if(!otpEntity.getOtpType().equals(otpType)){
             return false;
         }
 
@@ -114,9 +116,9 @@ public class OTPServiceImpl implements OTPService {
         return otp.toString();
     }
 
-    private OTPEntity createOTPEntity(UserEntity userEntity, String otpCode) {
+    private OTPEntity createOTPEntity(UserEntity userEntity, String otpCode, OTPType otpType) {
         return OTPEntity.builder()
-                .otpType(OTPType.EMAIL_VERIFICATION)
+                .otpType(otpType)
                 .otpCode(otpCode)
                 .expiryTime(LocalDateTime.now().plusMinutes(5))
                 .userEntity(userEntity)
@@ -143,7 +145,7 @@ public class OTPServiceImpl implements OTPService {
     }
 
     private void deactivateOTP(OTPEntity otpEntity) {
-        otpEntity.setStatus(OTPStatus.VERIFIED);
+        otpEntity.setStatus(OTPStatus.INACTIVE);
         otpRepository.save(otpEntity);
     }
 }
