@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import vn.hcmute.entity.UserEntity;
 import vn.hcmute.model.dto.OTPRequestDTO;
 import vn.hcmute.model.dto.UserDTO;
+import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.service.OTPService;
 import vn.hcmute.service.UserService;
 
@@ -76,4 +77,29 @@ public class AuthAPI {
         }
     }
 
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordDTO resetPasswordDTO, BindingResult result) {
+        try {
+            if (result.hasErrors()) {
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+
+            if (!resetPasswordDTO.getNewPassword().equals(resetPasswordDTO.getConfirmPassword())) {
+                return ResponseEntity.badRequest().body("Password and confirm password do not match");
+            }
+
+            boolean isReset = userService.resetPassword(resetPasswordDTO);
+            if (isReset) {
+                return ResponseEntity.ok("Password reset successfully");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP or user information");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
 }
