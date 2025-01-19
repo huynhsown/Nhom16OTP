@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.hcmute.entity.OTPEntity;
 import vn.hcmute.entity.RoleEntity;
 import vn.hcmute.entity.UserEntity;
@@ -12,6 +13,7 @@ import vn.hcmute.exception.DataNotFoundException;
 import vn.hcmute.exception.PermissionDenyException;
 import vn.hcmute.model.dto.OTPDTO;
 import vn.hcmute.model.dto.OTPRequestDTO;
+import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.model.dto.UserDTO;
 import vn.hcmute.repository.RoleRepository;
 import vn.hcmute.repository.UserRepository;
@@ -116,5 +118,21 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = userRepository.findByEmail(otpRequestDTO.getEmail())
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
         return otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity);
+    }
+
+    @Override
+    @Transactional
+    public boolean resetPassword(ResetPasswordDTO resetPasswordDTO) {
+        UserEntity userEntity = userRepository.findByEmail(resetPasswordDTO.getEmail())
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+
+        if (!otpService.verifyOTP(resetPasswordDTO.getOtp(), userEntity)) {
+            return false;
+        }
+
+        String encodedPassword = passwordEncoder.encode(resetPasswordDTO.getNewPassword());
+        userEntity.setPassWord(encodedPassword);
+        userRepository.save(userEntity);
+        return true;
     }
 }

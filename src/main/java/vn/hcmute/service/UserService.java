@@ -6,6 +6,7 @@ import vn.hcmute.entity.UserEntity;
 import vn.hcmute.exception.PermissionDenyException;
 import vn.hcmute.model.dto.OTPDTO;
 import vn.hcmute.model.dto.OTPRequestDTO;
+import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.model.dto.UserDTO;
 
 @Service
@@ -19,4 +20,5 @@ public interface UserService {
 
     boolean verifyOTP(OTPRequestDTO otpRequestDTO);
 
+    boolean resetPassword(ResetPasswordDTO resetPasswordDTO);
 }
