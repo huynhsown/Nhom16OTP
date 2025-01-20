@@ -16,6 +16,7 @@ import vn.hcmute.model.dto.OTPDTO;
 import vn.hcmute.model.dto.OTPRequestDTO;
 import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.model.dto.UserDTO;
+import vn.hcmute.model.dto.LoginAccountDTO;
 import vn.hcmute.repository.RoleRepository;
 import vn.hcmute.repository.UserRepository;
 import vn.hcmute.service.EmailService;
@@ -141,5 +142,20 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = userRepository.findByEmail(email)
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
         processOtpAndSendEmail(userEntity, email, otpType);
+    }
+
+    @Override
+    public boolean loginAccount(LoginAccountDTO loginAccountDTO){
+        UserEntity userEntity = userRepository.findByEmail(loginAccountDTO.getEmail())
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+
+        if (!otpService.verifyOTP(loginAccountDTO.getOtp(), userEntity, OTPType.LOGIN)) {
+            return false;
+        }
+
+        if (!passwordEncoder.matches(loginAccountDTO.getPassword(), userEntity.getPassWord())) {
+            return false;
+        }
+        return true;
     }
 }
