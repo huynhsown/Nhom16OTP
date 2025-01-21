@@ -12,10 +12,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import vn.hcmute.entity.UserEntity;
 import vn.hcmute.enums.OTPType;
-import vn.hcmute.model.dto.OTPRequestDTO;
-import vn.hcmute.model.dto.ResendOTPRequest;
-import vn.hcmute.model.dto.UserDTO;
-import vn.hcmute.model.dto.ResetPasswordDTO;
+import vn.hcmute.model.dto.*;
 import vn.hcmute.service.OTPService;
 import vn.hcmute.service.UserService;
 
@@ -113,4 +110,27 @@ public class AuthAPI {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+    @PostMapping("/login")
+    public ResponseEntity<?> loginAccount(@Valid @RequestBody LoginAccountDTO loginAccountDTO, BindingResult result){
+        try{
+            if (result.hasErrors()) {
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+            
+            boolean isLogin = userService.loginAccount(loginAccountDTO);
+            if (isLogin) {
+                return ResponseEntity.ok("Login successfully");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP or incorrect password");
+            }
+        }
+        catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+     }
+
 }
