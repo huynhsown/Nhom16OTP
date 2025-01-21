@@ -1,6 +1,8 @@
 package vn.hcmute.api;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -9,8 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import vn.hcmute.entity.UserEntity;
-import vn.hcmute.model.dto.OTPRequestDTO;
-import vn.hcmute.model.dto.UserDTO;
+import vn.hcmute.enums.OTPType;
+import vn.hcmute.model.dto.*;
 import vn.hcmute.service.OTPService;
 import vn.hcmute.service.UserService;
 
@@ -46,18 +48,8 @@ public class AuthAPI {
         }
     }
 
-    @GetMapping("/ok")
-    public ResponseEntity<?> hello(@RequestParam String email){
-        try{
-            return ResponseEntity.ok(userService.getOTP(email));
-        }
-        catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
     @PostMapping("/otp/verify")
-    public ResponseEntity<?> verifyOTP(@RequestBody OTPRequestDTO otpRequestDTO, BindingResult result){
+    public ResponseEntity<?> verifyOTP(@Valid @RequestBody OTPRequestDTO otpRequestDTO, BindingResult result){
         try{
             if(result.hasErrors()){
                 List<String> errorMessages = result.getFieldErrors()
@@ -66,7 +58,7 @@ public class AuthAPI {
                         .toList();
                 return ResponseEntity.badRequest().body(errorMessages);
             }
-            boolean isVerify = userService.verifyOTP(otpRequestDTO);
+            boolean isVerify = userService.verifyUser(otpRequestDTO);
             if(isVerify) {
                 return ResponseEntity.ok("Xác thực thành công");
             }
@@ -75,5 +67,70 @@ public class AuthAPI {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }
     }
+
+    @PostMapping("/otp/resend")
+    public ResponseEntity<?> resendOTP(@Valid @RequestBody ResendOTPRequest resendOTPRequest, BindingResult result){
+        try{
+            if(result.hasErrors()){
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+            userService.isSend(resendOTPRequest.getEmail(), resendOTPRequest.getOtpType());
+            return ResponseEntity.ok("Gửi lại OTP thành công");
+        }catch (Exception ex){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordDTO resetPasswordDTO, BindingResult result) {
+        try {
+            if (result.hasErrors()) {
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+
+            if (!resetPasswordDTO.getNewPassword().equals(resetPasswordDTO.getConfirmPassword())) {
+                return ResponseEntity.badRequest().body("Password and confirm password do not match");
+            }
+
+            boolean isReset = userService.resetPassword(resetPasswordDTO);
+            if (isReset) {
+                return ResponseEntity.ok("Password reset successfully");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP or user information");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+    @PostMapping("/login")
+    public ResponseEntity<?> loginAccount(@Valid @RequestBody LoginAccountDTO loginAccountDTO, BindingResult result){
+        try{
+            if (result.hasErrors()) {
+                List<String> errorMessages = result.getFieldErrors()
+                        .stream()
+                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                        .toList();
+                return ResponseEntity.badRequest().body(errorMessages);
+            }
+            
+            boolean isLogin = userService.loginAccount(loginAccountDTO);
+            if (isLogin) {
+                return ResponseEntity.ok("Login successfully");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP or incorrect password");
+            }
+        }
+        catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+     }
 
 }

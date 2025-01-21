@@ -4,15 +4,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.hcmute.entity.OTPEntity;
 import vn.hcmute.entity.RoleEntity;
 import vn.hcmute.entity.UserEntity;
+import vn.hcmute.enums.OTPType;
 import vn.hcmute.enums.RoleType;
 import vn.hcmute.exception.DataNotFoundException;
 import vn.hcmute.exception.PermissionDenyException;
 import vn.hcmute.model.dto.OTPDTO;
 import vn.hcmute.model.dto.OTPRequestDTO;
+import vn.hcmute.model.dto.ResetPasswordDTO;
 import vn.hcmute.model.dto.UserDTO;
+import vn.hcmute.model.dto.LoginAccountDTO;
 import vn.hcmute.repository.RoleRepository;
 import vn.hcmute.repository.UserRepository;
 import vn.hcmute.service.EmailService;
@@ -46,7 +50,7 @@ public class UserServiceImpl implements UserService {
         UserEntity userEntity = buildUserEntity(userDTO, roleEntity);
         encodePassword(userEntity, userDTO.getPassword());
         userRepository.save(userEntity);
-        processOtpAndSendEmail(userEntity, userDTO.getEmail());
+        processOtpAndSendEmail(userEntity, userDTO.getEmail(), OTPType.EMAIL_VERIFICATION);
         return userRepository.save(userEntity);
     }
 
@@ -92,16 +96,10 @@ public class UserServiceImpl implements UserService {
         userEntity.setPassWord(passwordEncoded);
     }
 
-    private void processOtpAndSendEmail(UserEntity userEntity, String email) {
-        OTPEntity otpEntity = otpService.generateOTP(userEntity);
+    private void processOtpAndSendEmail(UserEntity userEntity, String email, OTPType otpType) {
+        OTPEntity otpEntity = otpService.generateOTP(userEntity, otpType);
         emailService.sendOTPEmail(email, otpEntity.getOtpCode());
         userEntity.getOtpEntity().add(otpEntity);
-    }
-
-
-    @Override
-    public boolean verifyOTP(UserDTO userDTO, String otp) {
-        return false;
     }
 
     @Override
@@ -112,9 +110,52 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean verifyOTP(OTPRequestDTO otpRequestDTO) {
+    public boolean verifyUser(OTPRequestDTO otpRequestDTO) {
         UserEntity userEntity = userRepository.findByEmail(otpRequestDTO.getEmail())
                 .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
-        return otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity);
+        if(otpService.verifyOTP(otpRequestDTO.getOTP(), userEntity, OTPType.EMAIL_VERIFICATION)){
+            userEntity.setVerified(true);
+            userRepository.save(userEntity);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional
+    public boolean resetPassword(ResetPasswordDTO resetPasswordDTO) {
+        UserEntity userEntity = userRepository.findByEmail(resetPasswordDTO.getEmail())
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+
+        if (!otpService.verifyOTP(resetPasswordDTO.getOtp(), userEntity, OTPType.PASSWORD_RESET)) {
+            return false;
+        }
+
+        String encodedPassword = passwordEncoder.encode(resetPasswordDTO.getNewPassword());
+        userEntity.setPassWord(encodedPassword);
+        userRepository.save(userEntity);
+        return true;
+    }
+
+    @Override
+    public void isSend(String email, OTPType otpType) {
+        UserEntity userEntity = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+        processOtpAndSendEmail(userEntity, email, otpType);
+    }
+
+    @Override
+    public boolean loginAccount(LoginAccountDTO loginAccountDTO){
+        UserEntity userEntity = userRepository.findByEmail(loginAccountDTO.getEmail())
+                .orElseThrow(() -> new DataNotFoundException("Account does not exist"));
+
+        if (!otpService.verifyOTP(loginAccountDTO.getOtp(), userEntity, OTPType.LOGIN)) {
+            return false;
+        }
+
+        if (!passwordEncoder.matches(loginAccountDTO.getPassword(), userEntity.getPassWord())) {
+            return false;
+        }
+        return true;
     }
 }

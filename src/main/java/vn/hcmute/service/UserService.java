@@ -3,20 +3,22 @@ package vn.hcmute.service;
 import org.springframework.stereotype.Service;
 import vn.hcmute.entity.OTPEntity;
 import vn.hcmute.entity.UserEntity;
+import vn.hcmute.enums.OTPType;
 import vn.hcmute.exception.PermissionDenyException;
-import vn.hcmute.model.dto.OTPDTO;
-import vn.hcmute.model.dto.OTPRequestDTO;
-import vn.hcmute.model.dto.UserDTO;
+import vn.hcmute.model.dto.*;
 
 @Service
 public interface UserService {
 
     UserEntity createUser(UserDTO userDTO) throws PermissionDenyException;
 
-    boolean verifyOTP(UserDTO userDTO, String otp);
-
     OTPDTO getOTP(String email);
 
-    boolean verifyOTP(OTPRequestDTO otpRequestDTO);
+    boolean verifyUser(OTPRequestDTO otpRequestDTO);
 
+    boolean resetPassword(ResetPasswordDTO resetPasswordDTO);
+
+    void isSend(String email, OTPType otpType);
+
+    boolean loginAccount(LoginAccountDTO loginAccountDTO);
 }
